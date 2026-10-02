@@ -1,1 +1,1048 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RC Relaxation Oscillator - Capacitor Anxiety Relief</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tone.js for audio synthesis -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        ee: {
+                            bg: '#090d16',
+                            panel: '#111827',
+                            border: '#1f2937',
+                            cyan: '#06b6d4',
+                            amber: '#f59e0b',
+                            green: '#10b981',
+                            rose: '#f43f5e',
+                            grid: '#1e293b'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['Fira Code', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #070a12;
+            color: #e2e8f0;
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+        }
+
+        .font-mono {
+            font-family: 'Fira Code', monospace;
+        }
+
+        /* Oscilloscope CRT Grid & Glow Effects */
+        .crt-grid {
+            background-size: 25px 25px;
+            background-image: 
+                linear-gradient(to right, rgba(16, 185, 129, 0.08) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(16, 185, 129, 0.08) 1px, transparent 1px);
+        }
+
+        .crt-container {
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.8), 0 0 15px rgba(6, 182, 212, 0.15);
+            border: 1px solid rgba(6, 182, 212, 0.3);
+        }
+
+        .glow-cyan {
+            text-shadow: 0 0 10px rgba(6, 182, 212, 0.6), 0 0 20px rgba(6, 182, 212, 0.3);
+        }
+
+        .glow-green {
+            text-shadow: 0 0 10px rgba(16, 185, 129, 0.6), 0 0 20px rgba(16, 185, 129, 0.3);
+        }
+
+        .glow-amber {
+            text-shadow: 0 0 10px rgba(245, 158, 11, 0.6), 0 0 20px rgba(245, 158, 11, 0.3);
+        }
+
+        /* Custom Range Slider styling */
+        input[type=range] {
+            -webkit-appearance: none;
+            background: #1e293b;
+            border-radius: 6px;
+            height: 6px;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 18px;
+            width: 18px;
+            border-radius: 50%;
+            background: #06b6d4;
+            cursor: pointer;
+            box-shadow: 0 0 8px #06b6d4;
+        }
+
+        /* Scanline effect overlay */
+        .scanlines {
+            background: linear-gradient(
+                rgba(18, 16, 16, 0) 50%, 
+                rgba(0, 0, 0, 0.25) 50%
+            );
+            background-size: 100% 4px;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-ee-cyan selection:text-black">
+
+    <!-- Top Header -->
+    <header class="border-b border-ee-border bg-ee-panel/80 backdrop-blur px-4 py-3 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="p-2 bg-cyan-950/80 border border-ee-cyan/40 rounded-lg text-ee-cyan">
+                    <i class="fa-solid fa-bolt text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold font-mono tracking-tight text-white flex items-center gap-2">
+                        RC-RELAXATION-OSCILLATOR <span class="text-xs px-2 py-0.5 rounded bg-cyan-900/50 border border-cyan-500/30 text-cyan-300 font-normal">v1.0.4</span>
+                    </h1>
+                    <p class="text-xs text-slate-400">Bio-Capacitive Stress Dissipation Protocol for EE Students</p>
+                </div>
+            </div>
+
+            <!-- Header Quick Stats & Controls -->
+            <div class="flex items-center space-x-4">
+                <div class="hidden sm:flex items-center space-x-3 bg-slate-900/90 border border-slate-800 px-3 py-1.5 rounded-lg text-xs font-mono">
+                    <div>
+                        <span class="text-slate-500">STATE:</span>
+                        <span id="headerStateText" class="text-cyan-400 font-bold ml-1">UNCHARGED</span>
+                    </div>
+                    <div class="h-3 w-px bg-slate-700"></div>
+                    <div>
+                        <span class="text-slate-500">SESSIONS:</span>
+                        <span id="completedCyclesCount" class="text-emerald-400 font-bold ml-1">0</span>
+                    </div>
+                </div>
+
+                <button id="soundToggleBtn" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs font-mono flex items-center gap-2 transition">
+                    <i id="soundIcon" class="fa-solid fa-volume-xmark text-slate-400"></i>
+                    <span id="soundText" class="text-slate-300">AUDIO OFF</span>
+                </button>
+
+                <button id="panicModeBtn" class="px-3 py-1.5 bg-rose-950/50 hover:bg-rose-900/60 border border-rose-800/80 rounded-lg text-xs font-mono text-rose-300 flex items-center gap-2 transition" title="Emergency 3-Cycle Physiological Reset">
+                    <i class="fa-solid fa-triangle-exclamation text-rose-400"></i>
+                    <span>PANIC RESET</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="max-w-7xl mx-auto w-full px-4 py-6 flex-grow grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- Left Column: Visualizers (CRT Scope & Physical Schematic) -->
+        <div class="lg:col-span-8 flex flex-col space-y-6">
+
+            <!-- Primary Visualization Card -->
+            <div class="bg-ee-panel border border-ee-border rounded-xl p-4 sm:p-6 crt-container relative overflow-hidden flex flex-col justify-between min-h-[340px]">
+                <div class="absolute inset-0 scanlines opacity-40"></div>
+
+                <!-- CRT Overlay Controls Header -->
+                <div class="flex items-center justify-between z-10 mb-2">
+                    <div class="flex items-center space-x-2 font-mono text-xs">
+                        <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                        <span class="text-emerald-400 font-semibold tracking-wider">CH1: v_C(t)</span>
+                        <span class="text-slate-500">|</span>
+                        <span id="voltageReadout" class="text-cyan-400">0.00 V</span>
+                        <span class="text-slate-500">|</span>
+                        <span id="currentReadout" class="text-amber-400">I = 0.00 mA</span>
+                    </div>
+                    <div class="font-mono text-xs text-slate-400 flex items-center space-x-2">
+                        <span>TIME CONSTANT &tau; = <span id="tauReadout" class="text-white font-bold">2.00</span>s</span>
+                    </div>
+                </div>
+
+                <!-- Central Breathing HUD Overlay -->
+                <div class="z-10 my-auto text-center py-6 flex flex-col items-center justify-center">
+                    <div id="phaseTag" class="font-mono text-xs font-bold tracking-widest text-slate-400 uppercase mb-2 px-3 py-1 bg-slate-900/80 border border-slate-700/60 rounded-full inline-block">
+                        READY TO CHARGE
+                    </div>
+                    
+                    <h2 id="breathingPrompt" class="text-4xl sm:text-6xl font-black font-mono tracking-tight text-cyan-400 glow-cyan transition-all duration-300">
+                        INHALING...
+                    </h2>
+                    
+                    <p id="subPrompt" class="mt-3 text-sm font-mono text-slate-300 max-w-md mx-auto">
+                        Accumulating potential energy across dielectric boundary.
+                    </p>
+
+                    <!-- Real-time Progress Gauge Bar -->
+                    <div class="w-full max-w-md bg-slate-900 border border-slate-800 rounded-full h-3 mt-6 overflow-hidden p-0.5">
+                        <div id="chargeBar" class="h-full bg-gradient-to-r from-cyan-500 via-emerald-400 to-amber-400 rounded-full w-0 transition-all duration-75"></div>
+                    </div>
+                </div>
+
+                <!-- Dual Canvases Container (Schematic & Oscilloscope Waveform) -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 z-10 mt-2">
+                    
+                    <!-- Circuit Canvas -->
+                    <div class="bg-slate-950/90 border border-slate-800/80 rounded-lg p-1.5 crt-grid relative">
+                        <div class="text-[10px] font-mono text-slate-400 mb-0.5 flex justify-between">
+                            <span>CIRCUIT SCHEMATIC</span>
+                            <span id="switchStateLabel" class="text-cyan-400">SWITCH: CHARGING</span>
+                        </div>
+                        <canvas id="schematicCanvas" class="w-full h-20 block"></canvas>
+                    </div>
+
+                    <!-- Waveform Scope Canvas -->
+                    <div class="bg-slate-950/90 border border-slate-800/80 rounded-lg p-1.5 crt-grid relative">
+                        <div class="text-[10px] font-mono text-slate-400 mb-0.5 flex justify-between">
+                            <span>OSCILLOSCOPE WAVEFORM</span>
+                            <span class="text-emerald-400">GRID: 1V / DIV</span>
+                        </div>
+                        <canvas id="scopeCanvas" class="w-full h-20 block"></canvas>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- EE Grounding & Affirmations Box -->
+            <div class="bg-ee-panel border border-ee-border rounded-xl p-5 relative overflow-hidden">
+                <div class="flex items-start space-x-3">
+                    <div class="p-2.5 bg-amber-950/40 border border-amber-600/30 rounded-lg text-amber-400 shrink-0 mt-0.5">
+                        <i class="fa-solid fa-microchip text-lg"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-semibold font-mono text-slate-200 uppercase tracking-wider flex items-center gap-2">
+                            Thermal Noise & Impedance Grounding
+                        </h3>
+                        <p id="affirmationText" class="text-sm text-slate-300 mt-1 leading-relaxed italic">
+                            "High exam anxiety represents unbuffered feedback in your cognitive loop. Taking long exhales increases vagal tone—effectively lowering system gain and filtering out high-frequency mental noise."
+                        </p>
+                        <div class="mt-3 flex items-center justify-between text-xs font-mono text-slate-500">
+                            <span>SIGNAL-TO-NOISE RATIO: <span class="text-emerald-400 font-bold">OPTIMAL</span></span>
+                            <button id="nextAffirmationBtn" class="text-cyan-400 hover:text-cyan-300 underline flex items-center gap-1">
+                                <i class="fa-solid fa-rotate-right text-[10px]"></i> Next EE Mental Model
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Right Column: Control Parameters & Preset Tuning -->
+        <div class="lg:col-span-4 flex flex-col space-y-6">
+
+            <!-- Main Playback & Timer Card -->
+            <div class="bg-ee-panel border border-ee-border rounded-xl p-5 flex flex-col justify-between">
+                <div>
+                    <h3 class="text-xs font-mono font-bold uppercase tracking-wider text-slate-400 mb-4 flex items-center justify-between">
+                        <span><i class="fa-solid fa-sliders text-cyan-400 mr-2"></i> Oscillator Controls</span>
+                        <span id="timeElapsed" class="text-cyan-400">00:00</span>
+                    </h3>
+
+                    <div class="grid grid-cols-2 gap-3 mb-4">
+                        <button id="startStopBtn" class="w-full py-3 px-4 bg-gradient-to-r from-cyan-600 to-emerald-600 hover:from-cyan-500 hover:to-emerald-500 text-slate-950 font-bold font-mono text-sm rounded-lg shadow-lg shadow-cyan-950/50 flex items-center justify-center gap-2 transition active:scale-95">
+                            <i class="fa-solid fa-play"></i>
+                            <span>INITIATE</span>
+                        </button>
+                        <button id="resetBtn" class="w-full py-3 px-4 bg-slate-800 hover:bg-slate-700 text-slate-300 font-mono text-sm border border-slate-700 rounded-lg flex items-center justify-center gap-2 transition">
+                            <i class="fa-solid fa-arrow-rotate-left"></i>
+                            <span>RESET</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Preset Mode Tabs -->
+                <div class="mt-2">
+                    <label class="text-xs font-mono text-slate-400 mb-2 block">Pacing Preset (Breathing Protocol)</label>
+                    <div class="grid grid-cols-2 gap-2 text-xs font-mono">
+                        <button data-preset="box" class="preset-btn px-3 py-2 bg-slate-800 border border-slate-700 text-slate-300 rounded-lg hover:border-cyan-500 text-left transition">
+                            <div class="font-bold text-cyan-400">Box Breathing</div>
+                            <div class="text-[10px] text-slate-400">4s-4s-4s-4s (Symmetric)</div>
+                        </button>
+                        <button data-preset="calm" class="preset-btn px-3 py-2 bg-slate-800 border border-slate-700 text-slate-300 rounded-lg hover:border-cyan-500 text-left transition active-preset">
+                            <div class="font-bold text-emerald-400">4-7-8 Relaxing</div>
+                            <div class="text-[10px] text-slate-400">4s In | 7s Hold | 8s Out</div>
+                        </button>
+                        <button data-preset="coherent" class="preset-btn px-3 py-2 bg-slate-800 border border-slate-700 text-slate-300 rounded-lg hover:border-cyan-500 text-left transition">
+                            <div class="font-bold text-amber-400">Coherent (0.1Hz)</div>
+                            <div class="text-[10px] text-slate-400">5.5s In | 5.5s Out</div>
+                        </button>
+                        <button data-preset="custom" class="preset-btn px-3 py-2 bg-slate-800 border border-slate-700 text-slate-300 rounded-lg hover:border-cyan-500 text-left transition">
+                            <div class="font-bold text-rose-400">EE Custom &tau;</div>
+                            <div class="text-[10px] text-slate-400">Driven by R & C sliders</div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Circuit Component Tuning (R & C Sliders) -->
+            <div class="bg-ee-panel border border-ee-border rounded-xl p-5 space-y-4">
+                <h3 class="text-xs font-mono font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
+                    <span><i class="fa-solid fa-microchip text-emerald-400 mr-2"></i> Component Parameters</span>
+                    <span class="text-[10px] text-slate-500">&tau; = R &times; C</span>
+                </h3>
+
+                <!-- Resistance Slider -->
+                <div>
+                    <div class="flex justify-between text-xs font-mono mb-1">
+                        <span class="text-slate-300">Resistor R (Breathing Damping):</span>
+                        <span id="rValLabel" class="text-cyan-400 font-bold">2.0 k&Omega;</span>
+                    </div>
+                    <input id="rSlider" type="range" min="0.5" max="5.0" step="0.1" value="2.0" class="w-full">
+                    <p class="text-[10px] text-slate-500 mt-1">Higher R = Slower air inflow/outflow gradient</p>
+                </div>
+
+                <!-- Capacitance Slider -->
+                <div>
+                    <div class="flex justify-between text-xs font-mono mb-1">
+                        <span class="text-slate-300">Capacitance C (Lung Capacity):</span>
+                        <span id="cValLabel" class="text-emerald-400 font-bold">1000 &mu;F</span>
+                    </div>
+                    <input id="cSlider" type="range" min="500" max="2500" step="100" value="1000" class="w-full">
+                    <p class="text-[10px] text-slate-500 mt-1">Higher C = Larger full-charge holding volume</p>
+                </div>
+
+                <!-- Voltage Source Slider -->
+                <div>
+                    <div class="flex justify-between text-xs font-mono mb-1">
+                        <span class="text-slate-300">Supply Voltage V<sub>DD</sub>:</span>
+                        <span id="vValLabel" class="text-amber-400 font-bold">5.0 V</span>
+                    </div>
+                    <input id="vSlider" type="range" min="1.0" max="10.0" step="0.5" value="5.0" class="w-full">
+                </div>
+
+                <!-- Computed EE Math Box -->
+                <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 text-xs font-mono space-y-1.5">
+                    <div class="text-slate-400 text-[10px] font-semibold border-b border-slate-800 pb-1 mb-1">EQUATIONS OF STATE</div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Charging:</span>
+                        <span class="text-cyan-300">v(t) = V<sub>0</sub>(1 - e<sup>-t/&tau;</sup>)</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Discharging:</span>
+                        <span class="text-amber-300">v(t) = V<sub>0</sub> e<sup>-t/&tau;</sup></span>
+                    </div>
+                    <div class="flex justify-between pt-1 border-t border-slate-800/60">
+                        <span class="text-slate-500">Stored Energy E:</span>
+                        <span id="energyLabel" class="text-emerald-400">12.50 mJ</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sound Synthesis Options -->
+            <div class="bg-ee-panel border border-ee-border rounded-xl p-5 space-y-3">
+                <h3 class="text-xs font-mono font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
+                    <span><i class="fa-solid fa-wave-square text-amber-400 mr-2"></i> Audio Synthesis</span>
+                </h3>
+                
+                <div class="flex items-center justify-between text-xs font-mono">
+                    <span class="text-slate-300">Sine Pitch Follower</span>
+                    <input id="pitchFollowerToggle" type="checkbox" checked class="accent-cyan-500 rounded h-4 w-4">
+                </div>
+                <div class="flex items-center justify-between text-xs font-mono">
+                    <span class="text-slate-300">Ambient Lab Fan White Noise</span>
+                    <input id="whiteNoiseToggle" type="checkbox" class="accent-cyan-500 rounded h-4 w-4">
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-ee-border bg-ee-panel/50 py-4 px-4 text-center text-xs font-mono text-slate-500">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+            <div>
+                Designed for Electrical Engineering students dealing with exam & test stress.
+            </div>
+            <div class="flex space-x-4">
+                <span class="text-slate-400">&bull; RC Exponential Decay Curve</span>
+                <span class="text-slate-400">&bull; Vagal Nerve Parasympathetic Activation</span>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Application State
+        const state = {
+            isRunning: false,
+            phase: 'IDLE', // IDLE, INHALE, HOLD_HIGH, EXHALE, HOLD_LOW
+            timeInPhase: 0,
+            totalElapsed: 0,
+            completedCycles: 0,
+            
+            // Electrical Parameters
+            R: 2.0, // kOhms
+            C: 1000, // microFarads
+            Vdd: 5.0, // Volts
+            
+            // Computed Voltage & Current
+            vc: 0, // Volts
+            current: 0, // mA
+            
+            // Pacing DURATIONS (in seconds)
+            preset: 'calm', // 'box', 'calm', 'coherent', 'custom'
+            durations: {
+                inhale: 4,
+                holdHigh: 7,
+                exhale: 8,
+                holdLow: 0
+            },
+            
+            // Audio settings
+            audioEnabled: false,
+            pitchFollower: true,
+            ambientNoise: false
+        };
+
+        // EE De-stress Affirmations Database
+        const affirmations = [
+            "High exam anxiety represents unbuffered feedback in your cognitive loop. Taking long exhales increases vagal tone—effectively lowering system gain and filtering out high-frequency mental noise.",
+            "Remember: Slew rate limits apply to your brain too. You don't have to solve complex Fourier transforms instantly. Take it step by step.",
+            "Ground yourself like a zero-volt reference node. No matter how high the transient voltage spike of stress is, your baseline remains stable.",
+            "Discharging your active thermal stress reduces internal body temperature and heart rate variability. Let the exponential decay clear your mental buffer.",
+            "Think of your mind as a low-pass filter. Slow down your breathing cutoff frequency to attenuate exam panic harmonics.",
+            "You have survived every hard midterm before this. Your internal system margin is wider than you think."
+        ];
+        let currentAffirmationIdx = 0;
+
+        // Visual Canvas References
+        const schematicCanvas = document.getElementById('schematicCanvas');
+        const schematicCtx = schematicCanvas.getContext('2d');
+        const scopeCanvas = document.getElementById('scopeCanvas');
+        const scopeCtx = scopeCanvas.getContext('2d');
+
+        // Oscilloscope Trace History Array
+        const scopeHistory = [];
+        const MAX_SCOPE_SAMPLES = 250;
+
+        // Tone.js Audio Objects
+        let synth = null;
+        let noise = null;
+        let noiseFilter = null;
+        let audioInitialized = false;
+
+        function initAudio() {
+            if (audioInitialized) return;
+            try {
+                Tone.start();
+                
+                // Pure gentle sine synth for capacitive tone
+                synth = new Tone.Synth({
+                    oscillator: { type: 'sine' },
+                    envelope: {
+                        attack: 0.2,
+                        decay: 0.1,
+                        sustain: 0.9,
+                        release: 0.8
+                    }
+                }).toDestination();
+                synth.volume.value = -16;
+
+                // Ambient soft lab low-pass noise filter
+                noiseFilter = new Tone.Filter(200, "lowpass").toDestination();
+                noise = new Tone.Noise("pink").connect(noiseFilter);
+                noise.volume.value = -28;
+
+                audioInitialized = true;
+            } catch (e) {
+                console.warn("Audio Context init error:", e);
+            }
+        }
+
+        function resizeCanvases() {
+            [schematicCanvas, scopeCanvas].forEach(canvas => {
+                const rect = canvas.getBoundingClientRect();
+                canvas.width = rect.width * window.devicePixelRatio;
+                canvas.height = rect.height * window.devicePixelRatio;
+            });
+        }
+
+        window.addEventListener('resize', resizeCanvases);
+
+        function updateDurationsFromPreset() {
+            if (state.preset === 'box') {
+                state.durations = { inhale: 4, holdHigh: 4, exhale: 4, holdLow: 4 };
+            } else if (state.preset === 'calm') {
+                state.durations = { inhale: 4, holdHigh: 7, exhale: 8, holdLow: 0 };
+            } else if (state.preset === 'coherent') {
+                state.durations = { inhale: 5.5, holdHigh: 0, exhale: 5.5, holdLow: 0 };
+            } else if (state.preset === 'custom') {
+                const tau = state.R * (state.C / 1000); // R(k) * C(mF) = tau in seconds
+                state.durations = {
+                    inhale: Math.max(2, parseFloat((tau * 2.2).toFixed(1))),
+                    holdHigh: Math.max(1, parseFloat((tau * 1.5).toFixed(1))),
+                    exhale: Math.max(2, parseFloat((tau * 3.0).toFixed(1))),
+                    holdLow: 1
+                };
+            }
+            updateTauReadout();
+        }
+
+        function updateTauReadout() {
+            const tau = state.R * (state.C / 1000);
+            document.getElementById('tauReadout').textContent = tau.toFixed(2);
+            document.getElementById('rValLabel').textContent = `${state.R.toFixed(1)} kΩ`;
+            document.getElementById('cValLabel').textContent = `${state.C} µF`;
+            document.getElementById('vValLabel').textContent = `${state.Vdd.toFixed(1)} V`;
+
+            // Energy E = 0.5 * C * V^2 (mJ)
+            const energy = 0.5 * (state.C / 1000000) * Math.pow(state.Vdd, 2) * 1000;
+            document.getElementById('energyLabel').textContent = `${energy.toFixed(2)} mJ`;
+        }
+
+        let lastTimestamp = null;
+
+        function updateState(dt) {
+            if (!state.isRunning) return;
+
+            state.totalElapsed += dt;
+            state.timeInPhase += dt;
+
+            // Phase finite state machine logic
+            let currentPhaseDuration = state.durations[state.phase.toLowerCase()] || 4;
+
+            if (state.timeInPhase >= currentPhaseDuration) {
+                // Transition to next state
+                state.timeInPhase = 0;
+                switch (state.phase) {
+                    case 'IDLE':
+                    case 'HOLD_LOW':
+                        state.phase = 'INHALE';
+                        break;
+                    case 'INHALE':
+                        state.phase = state.durations.holdHigh > 0 ? 'HOLD_HIGH' : 'EXHALE';
+                        break;
+                    case 'HOLD_HIGH':
+                        state.phase = 'EXHALE';
+                        break;
+                    case 'EXHALE':
+                        if (state.durations.holdLow > 0) {
+                            state.phase = 'HOLD_LOW';
+                        } else {
+                            state.phase = 'INHALE';
+                            state.completedCycles++;
+                        }
+                        break;
+                }
+                if (state.phase === 'HOLD_LOW' && state.durations.holdLow > 0) {
+                    state.completedCycles++;
+                }
+            }
+
+            // Calculate Capacitor Voltage v_C(t) and Current i(t) based on Exponential RC Equations
+            const tau = state.R * (state.C / 1000);
+            const progress = Math.min(1, state.timeInPhase / currentPhaseDuration);
+
+            if (state.phase === 'INHALE') {
+                // Charging: v(t) = Vdd * (1 - e^(-3 * t / tau))
+                const tNormalized = progress * (currentPhaseDuration / tau);
+                state.vc = state.Vdd * (1 - Math.exp(-tNormalized));
+                // i(t) = (Vdd/R) * e^(-t/tau)
+                state.current = (state.Vdd / state.R) * Math.exp(-tNormalized);
+            } 
+            else if (state.phase === 'HOLD_HIGH') {
+                state.vc = state.Vdd;
+                state.current = 0.01; // Leakage current
+            } 
+            else if (state.phase === 'EXHALE') {
+                // Discharging: v(t) = Vdd * e^(-3 * t / tau)
+                const tNormalized = progress * (currentPhaseDuration / tau);
+                state.vc = state.Vdd * Math.exp(-tNormalized);
+                state.current = -(state.Vdd / state.R) * Math.exp(-tNormalized);
+            } 
+            else if (state.phase === 'HOLD_LOW' || state.phase === 'IDLE') {
+                state.vc = 0;
+                state.current = 0;
+            }
+
+            // Store sample into Oscilloscope history array
+            scopeHistory.push(state.vc);
+            if (scopeHistory.length > MAX_SCOPE_SAMPLES) {
+                scopeHistory.shift();
+            }
+
+            // Update Audio Synthesizer parameters
+            if (state.audioEnabled && audioInitialized && synth) {
+                if (state.pitchFollower) {
+                    // Map Voltage 0V - 10V to Audio Frequency 110Hz (A2) - 330Hz (E4)
+                    const freq = 110 + (state.vc / 10.0) * 220;
+                    synth.setNote(freq);
+                }
+            }
+
+            updateUIReadouts();
+        }
+
+        function updateUIReadouts() {
+            // Update Text Labels
+            document.getElementById('voltageReadout').textContent = `${state.vc.toFixed(2)} V`;
+            document.getElementById('currentReadout').textContent = `I = ${(Math.abs(state.current)).toFixed(2)} mA`;
+            document.getElementById('completedCyclesCount').textContent = state.completedCycles;
+
+            // Formatting Total Time
+            const totalSecs = Math.floor(state.totalElapsed);
+            const mins = Math.floor(totalSecs / 60).toString().padStart(2, '0');
+            const secs = (totalSecs % 60).toString().padStart(2, '0');
+            document.getElementById('timeElapsed').textContent = `${mins}:${secs}`;
+
+            const promptEl = document.getElementById('breathingPrompt');
+            const subPromptEl = document.getElementById('subPrompt');
+            const phaseTagEl = document.getElementById('phaseTag');
+            const headerStateText = document.getElementById('headerStateText');
+            const switchStateLabel = document.getElementById('switchStateLabel');
+            const chargeBar = document.getElementById('chargeBar');
+
+            let maxVal = state.Vdd;
+            let chargePct = Math.min(100, Math.max(0, (state.vc / maxVal) * 100));
+            chargeBar.style.width = `${chargePct}%`;
+
+            switch (state.phase) {
+                case 'INHALE':
+                    phaseTagEl.textContent = 'CHARGING PHASE [IN]';
+                    phaseTagEl.className = 'font-mono text-xs font-bold tracking-widest text-cyan-400 uppercase mb-2 px-3 py-1 bg-cyan-950/80 border border-cyan-700/60 rounded-full inline-block';
+                    promptEl.textContent = 'INHALING...';
+                    promptEl.className = 'text-4xl sm:text-6xl font-black font-mono tracking-tight text-cyan-400 glow-cyan transition-all duration-300';
+                    subPromptEl.textContent = 'Pumping electric charge into capacitor plates. Smooth deep inhale.';
+                    headerStateText.textContent = 'CHARGING';
+                    headerStateText.className = 'text-cyan-400 font-bold ml-1';
+                    switchStateLabel.textContent = 'SWITCH: CHARGE (V_DD)';
+                    switchStateLabel.className = 'text-cyan-400';
+                    break;
+
+                case 'HOLD_HIGH':
+                    phaseTagEl.textContent = 'SATURATED / FULLY CHARGED';
+                    phaseTagEl.className = 'font-mono text-xs font-bold tracking-widest text-emerald-400 uppercase mb-2 px-3 py-1 bg-emerald-950/80 border border-emerald-700/60 rounded-full inline-block';
+                    promptEl.textContent = 'HOLD BREATH';
+                    promptEl.className = 'text-4xl sm:text-6xl font-black font-mono tracking-tight text-emerald-400 glow-green transition-all duration-300';
+                    subPromptEl.textContent = 'Dielectric boundary at max potential voltage. Hold calm and still.';
+                    headerStateText.textContent = 'SATURATED';
+                    headerStateText.className = 'text-emerald-400 font-bold ml-1';
+                    switchStateLabel.textContent = 'SWITCH: OPEN (DISCONNECTED)';
+                    switchStateLabel.className = 'text-emerald-400';
+                    break;
+
+                case 'EXHALE':
+                    phaseTagEl.textContent = 'DISCHARGING PHASE [OUT]';
+                    phaseTagEl.className = 'font-mono text-xs font-bold tracking-widest text-amber-400 uppercase mb-2 px-3 py-1 bg-amber-950/80 border border-amber-700/60 rounded-full inline-block';
+                    promptEl.textContent = 'EXHALING...';
+                    promptEl.className = 'text-4xl sm:text-6xl font-black font-mono tracking-tight text-amber-400 glow-amber transition-all duration-300';
+                    subPromptEl.textContent = 'Dissipating current through resistor. Slow, steady relaxation release.';
+                    headerStateText.textContent = 'DISCHARGING';
+                    headerStateText.className = 'text-amber-400 font-bold ml-1';
+                    switchStateLabel.textContent = 'SWITCH: GND (DISCHARGE)';
+                    switchStateLabel.className = 'text-amber-400';
+                    break;
+
+                case 'HOLD_LOW':
+                    phaseTagEl.textContent = 'GROUND STATE (0V)';
+                    phaseTagEl.className = 'font-mono text-xs font-bold tracking-widest text-slate-400 uppercase mb-2 px-3 py-1 bg-slate-900 border border-slate-700 rounded-full inline-block';
+                    promptEl.textContent = 'HOLD EMPTY';
+                    promptEl.className = 'text-4xl sm:text-6xl font-black font-mono tracking-tight text-slate-300 transition-all duration-300';
+                    subPromptEl.textContent = 'Fully grounded at 0V reference. Pause before next cycle.';
+                    headerStateText.textContent = 'GROUNDED';
+                    headerStateText.className = 'text-slate-400 font-bold ml-1';
+                    switchStateLabel.textContent = 'SWITCH: GND';
+                    switchStateLabel.className = 'text-slate-400';
+                    break;
+
+                default:
+                    phaseTagEl.textContent = 'SYSTEM IDLE';
+                    promptEl.textContent = 'PRESS INITIATE';
+                    promptEl.className = 'text-4xl sm:text-6xl font-black font-mono tracking-tight text-slate-500';
+                    subPromptEl.textContent = 'Press Initiate to begin bio-capacitive anxiety reduction protocol.';
+                    headerStateText.textContent = 'IDLE';
+                    headerStateText.className = 'text-slate-500 font-bold ml-1';
+            }
+        }
+
+        function drawSchematic() {
+            const w = schematicCanvas.width;
+            const h = schematicCanvas.height;
+            schematicCtx.clearRect(0, 0, w, h);
+
+            const padding = 16;
+            const wireColor = '#334155';
+            const activeWireColor = state.phase === 'INHALE' ? '#06b6d4' : (state.phase === 'EXHALE' ? '#f59e0b' : '#475569');
+
+            // 1. Draw Circuit Wire Loop
+            schematicCtx.strokeStyle = wireColor;
+            schematicCtx.lineWidth = 2 * window.devicePixelRatio;
+            schematicCtx.beginPath();
+            
+            // Loop rectangle
+            schematicCtx.rect(padding, padding, w - padding * 2, h - padding * 2);
+            schematicCtx.stroke();
+
+            // 2. Draw Voltage Source (DC Battery) on Left Wire
+            const leftX = padding;
+            const centerY = h / 2;
+            schematicCtx.fillStyle = '#090d16';
+            schematicCtx.fillRect(leftX - 12, centerY - 14, 24, 28);
+            
+            // Battery plates
+            schematicCtx.strokeStyle = '#06b6d4';
+            schematicCtx.lineWidth = 2.5 * window.devicePixelRatio;
+            schematicCtx.beginPath();
+            schematicCtx.moveTo(leftX - 9, centerY - 8);
+            schematicCtx.lineTo(leftX + 9, centerY - 8); // Long plate (+)
+            schematicCtx.moveTo(leftX - 5, centerY + 8);
+            schematicCtx.lineTo(leftX + 5, centerY + 8);   // Short plate (-)
+            schematicCtx.stroke();
+
+            // Source Label
+            schematicCtx.fillStyle = '#94a3b8';
+            schematicCtx.font = `${8 * window.devicePixelRatio}px 'Fira Code'`;
+            schematicCtx.fillText('V_DD', leftX - 18, centerY - 12);
+
+            // 3. Draw Resistor (Zig-zag) on Top Wire
+            const topY = padding;
+            const centerX = w / 2;
+            schematicCtx.fillStyle = '#090d16';
+            schematicCtx.fillRect(centerX - 22, topY - 10, 44, 20);
+
+            schematicCtx.strokeStyle = '#10b981';
+            schematicCtx.lineWidth = 1.5 * window.devicePixelRatio;
+            schematicCtx.beginPath();
+            schematicCtx.moveTo(centerX - 18, topY);
+            schematicCtx.lineTo(centerX - 13, topY - 5);
+            schematicCtx.lineTo(centerX - 7, topY + 5);
+            schematicCtx.lineTo(centerX - 1, topY - 5);
+            schematicCtx.lineTo(centerX + 5, topY + 5);
+            schematicCtx.lineTo(centerX + 11, topY - 5);
+            schematicCtx.lineTo(centerX + 18, topY);
+            schematicCtx.stroke();
+
+            schematicCtx.fillStyle = '#10b981';
+            schematicCtx.fillText(`R=${state.R}k`, centerX - 14, topY - 10);
+
+            // 4. Draw Capacitor (Parallel Plates) on Right Wire
+            const rightX = w - padding;
+            schematicCtx.fillStyle = '#090d16';
+            schematicCtx.fillRect(rightX - 15, centerY - 20, 30, 40);
+
+            const plateGap = 8 * window.devicePixelRatio;
+            const plateWidth = 18 * window.devicePixelRatio;
+
+            // Top Plate (+ Charge)
+            schematicCtx.strokeStyle = state.vc > 0.5 ? '#06b6d4' : '#64748b';
+            schematicCtx.lineWidth = 3 * window.devicePixelRatio;
+            schematicCtx.beginPath();
+            schematicCtx.moveTo(rightX - plateWidth/2, centerY - plateGap/2);
+            schematicCtx.lineTo(rightX + plateWidth/2, centerY - plateGap/2);
+            schematicCtx.stroke();
+
+            // Bottom Plate (- Charge)
+            schematicCtx.strokeStyle = state.vc > 0.5 ? '#f59e0b' : '#64748b';
+            schematicCtx.beginPath();
+            schematicCtx.moveTo(rightX - plateWidth/2, centerY + plateGap/2);
+            schematicCtx.lineTo(rightX + plateWidth/2, centerY + plateGap/2);
+            schematicCtx.stroke();
+
+            // Dielectric Electric Field Lines inside Capacitor
+            if (state.vc > 0.2) {
+                const alpha = Math.min(1, state.vc / state.Vdd);
+                schematicCtx.strokeStyle = `rgba(6, 182, 212, ${alpha * 0.8})`;
+                schematicCtx.lineWidth = 1 * window.devicePixelRatio;
+                for (let x = rightX - plateWidth/2 + 3; x <= rightX + plateWidth/2 - 3; x += 5) {
+                    schematicCtx.beginPath();
+                    schematicCtx.moveTo(x, centerY - plateGap/2 + 2);
+                    schematicCtx.lineTo(x, centerY + plateGap/2 - 2);
+                    schematicCtx.stroke();
+                }
+            }
+
+            schematicCtx.fillStyle = '#06b6d4';
+            schematicCtx.fillText(`C=${state.C}µF`, rightX + 10, centerY + 3);
+
+            // 5. Animate Moving Electron Dots when Current Flows
+            if (Math.abs(state.current) > 0.05 && state.isRunning) {
+                const time = Date.now() * 0.005 * (state.current > 0 ? 1 : -1);
+                schematicCtx.fillStyle = state.current > 0 ? '#06b6d4' : '#f59e0b';
+                
+                const dotCount = 10;
+                const perimeter = 2 * (w - padding * 2) + 2 * (h - padding * 2);
+                
+                for (let i = 0; i < dotCount; i++) {
+                    const dist = ((i * (perimeter / dotCount)) + (time * 40)) % perimeter;
+                    let x = 0, y = 0;
+
+                    if (dist < (w - padding * 2)) {
+                        x = padding + dist;
+                        y = padding;
+                    } else if (dist < (w - padding * 2) + (h - padding * 2)) {
+                        x = w - padding;
+                        y = padding + (dist - (w - padding * 2));
+                    } else if (dist < 2 * (w - padding * 2) + (h - padding * 2)) {
+                        x = (w - padding) - (dist - (w - padding * 2) - (h - padding * 2));
+                        y = h - padding;
+                    } else {
+                        x = padding;
+                        y = (h - padding) - (dist - 2 * (w - padding * 2) - (h - padding * 2));
+                    }
+
+                    schematicCtx.beginPath();
+                    schematicCtx.arc(x, y, 2.5 * window.devicePixelRatio, 0, Math.PI * 2);
+                    schematicCtx.fill();
+                }
+            }
+        }
+
+        function drawOscilloscope() {
+            const w = scopeCanvas.width;
+            const h = scopeCanvas.height;
+            scopeCtx.clearRect(0, 0, w, h);
+
+            // Draw CRT Grid overlay
+            scopeCtx.strokeStyle = 'rgba(16, 185, 129, 0.12)';
+            scopeCtx.lineWidth = 1;
+            const gridSize = 14 * window.devicePixelRatio;
+
+            for (let x = 0; x < w; x += gridSize) {
+                scopeCtx.beginPath();
+                scopeCtx.moveTo(x, 0);
+                scopeCtx.lineTo(x, h);
+                scopeCtx.stroke();
+            }
+            for (let y = 0; y < h; y += gridSize) {
+                scopeCtx.beginPath();
+                scopeCtx.moveTo(0, y);
+                scopeCtx.lineTo(w, y);
+                scopeCtx.stroke();
+            }
+
+            // Draw Center Axis
+            scopeCtx.strokeStyle = 'rgba(16, 185, 129, 0.3)';
+            scopeCtx.beginPath();
+            scopeCtx.moveTo(0, h / 2);
+            scopeCtx.lineTo(w, h / 2);
+            scopeCtx.stroke();
+
+            if (scopeHistory.length < 2) return;
+
+            // Plot Waveform v_C(t)
+            scopeCtx.strokeStyle = '#10b981';
+            scopeCtx.lineWidth = 2 * window.devicePixelRatio;
+            scopeCtx.shadowColor = '#10b981';
+            scopeCtx.shadowBlur = 6;
+            scopeCtx.beginPath();
+
+            const stepX = w / MAX_SCOPE_SAMPLES;
+            for (let i = 0; i < scopeHistory.length; i++) {
+                const x = i * stepX;
+                // Map Voltage (0 to Vdd) to Canvas Y (bottom to top)
+                const normV = Math.min(1, Math.max(0, scopeHistory[i] / (state.Vdd || 5)));
+                const y = (h - 8) - normV * (h - 16);
+
+                if (i === 0) {
+                    scopeCtx.moveTo(x, y);
+                } else {
+                    scopeCtx.lineTo(x, y);
+                }
+            }
+            scopeCtx.stroke();
+            scopeCtx.shadowBlur = 0; // Reset shadow
+
+            // Draw Cursor Dot at recent point
+            if (scopeHistory.length > 0) {
+                const lastIdx = scopeHistory.length - 1;
+                const lastX = lastIdx * stepX;
+                const normV = Math.min(1, Math.max(0, scopeHistory[lastIdx] / (state.Vdd || 5)));
+                const lastY = (h - 8) - normV * (h - 16);
+
+                scopeCtx.fillStyle = '#06b6d4';
+                scopeCtx.beginPath();
+                scopeCtx.arc(lastX, lastY, 3 * window.devicePixelRatio, 0, Math.PI * 2);
+                scopeCtx.fill();
+            }
+        }
+
+        function mainLoop(timestamp) {
+            if (!lastTimestamp) lastTimestamp = timestamp;
+            const dt = (timestamp - lastTimestamp) / 1000; // convert ms to seconds
+            lastTimestamp = timestamp;
+
+            // Limit maximum delta time to avoid frame spikes
+            if (dt < 0.2) {
+                updateState(dt);
+            }
+
+            drawSchematic();
+            drawOscilloscope();
+
+            requestAnimationFrame(mainLoop);
+        }
+
+        function setupEventListeners() {
+            // Start / Stop Toggle Button
+            const startStopBtn = document.getElementById('startStopBtn');
+            startStopBtn.addEventListener('click', () => {
+                state.isRunning = !state.isRunning;
+                if (state.isRunning) {
+                    if (state.phase === 'IDLE') {
+                        state.phase = 'INHALE';
+                        state.timeInPhase = 0;
+                    }
+                    startStopBtn.innerHTML = '<i class="fa-solid fa-pause"></i><span>PAUSE</span>';
+                    startStopBtn.className = 'w-full py-3 px-4 bg-gradient-to-r from-amber-600 to-rose-600 hover:from-amber-500 hover:to-rose-500 text-slate-950 font-bold font-mono text-sm rounded-lg shadow-lg flex items-center justify-center gap-2 transition active:scale-95';
+
+                    // Start Audio if audio enabled
+                    if (state.audioEnabled) {
+                        initAudio();
+                        if (synth) synth.triggerAttack(110);
+                        if (noise && state.ambientNoise) noise.start();
+                    }
+                } else {
+                    startStopBtn.innerHTML = '<i class="fa-solid fa-play"></i><span>INITIATE</span>';
+                    startStopBtn.className = 'w-full py-3 px-4 bg-gradient-to-r from-cyan-600 to-emerald-600 hover:from-cyan-500 hover:to-emerald-500 text-slate-950 font-bold font-mono text-sm rounded-lg shadow-lg flex items-center justify-center gap-2 transition active:scale-95';
+
+                    if (synth) synth.triggerRelease();
+                    if (noise) noise.stop();
+                }
+            });
+
+            // Reset Button
+            document.getElementById('resetBtn').addEventListener('click', () => {
+                state.isRunning = false;
+                state.phase = 'IDLE';
+                state.timeInPhase = 0;
+                state.totalElapsed = 0;
+                state.vc = 0;
+                state.current = 0;
+                scopeHistory.length = 0;
+
+                startStopBtn.innerHTML = '<i class="fa-solid fa-play"></i><span>INITIATE</span>';
+                startStopBtn.className = 'w-full py-3 px-4 bg-gradient-to-r from-cyan-600 to-emerald-600 hover:from-cyan-500 hover:to-emerald-500 text-slate-950 font-bold font-mono text-sm rounded-lg shadow-lg flex items-center justify-center gap-2 transition active:scale-95';
+
+                if (synth) synth.triggerRelease();
+                if (noise) noise.stop();
+                updateUIReadouts();
+            });
+
+            // Panic Reset Button (Physiological Sigh Quick Protocol)
+            document.getElementById('panicModeBtn').addEventListener('click', () => {
+                state.preset = 'custom';
+                // Fast 2s inhale, 1s double inhale pause, 6s long dissipate exhale
+                state.durations = { inhale: 2.5, holdHigh: 0.8, exhale: 6.0, holdLow: 0.5 };
+                state.phase = 'INHALE';
+                state.timeInPhase = 0;
+                state.isRunning = true;
+                
+                // Highlight active preset button
+                document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('border-cyan-500', 'bg-slate-700'));
+                
+                startStopBtn.innerHTML = '<i class="fa-solid fa-pause"></i><span>PAUSE</span>';
+                startStopBtn.className = 'w-full py-3 px-4 bg-gradient-to-r from-amber-600 to-rose-600 hover:from-amber-500 hover:to-rose-500 text-slate-950 font-bold font-mono text-sm rounded-lg shadow-lg flex items-center justify-center gap-2 transition active:scale-95';
+
+                if (state.audioEnabled) {
+                    initAudio();
+                    if (synth) synth.triggerAttack(110);
+                }
+            });
+
+            // Preset Buttons
+            document.querySelectorAll('.preset-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('border-cyan-500', 'bg-slate-700'));
+                    const target = e.currentTarget;
+                    target.classList.add('border-cyan-500', 'bg-slate-700');
+                    state.preset = target.getAttribute('data-preset');
+                    updateDurationsFromPreset();
+                });
+            });
+
+            // Slider Controls
+            document.getElementById('rSlider').addEventListener('input', (e) => {
+                state.R = parseFloat(e.target.value);
+                if (state.preset === 'custom') updateDurationsFromPreset();
+                else updateTauReadout();
+            });
+
+            document.getElementById('cSlider').addEventListener('input', (e) => {
+                state.C = parseFloat(e.target.value);
+                if (state.preset === 'custom') updateDurationsFromPreset();
+                else updateTauReadout();
+            });
+
+            document.getElementById('vSlider').addEventListener('input', (e) => {
+                state.Vdd = parseFloat(e.target.value);
+                updateTauReadout();
+            });
+
+            // Sound Toggle Controls
+            const soundToggleBtn = document.getElementById('soundToggleBtn');
+            const soundIcon = document.getElementById('soundIcon');
+            const soundText = document.getElementById('soundText');
+
+            soundToggleBtn.addEventListener('click', () => {
+                state.audioEnabled = !state.audioEnabled;
+                if (state.audioEnabled) {
+                    initAudio();
+                    soundIcon.className = 'fa-solid fa-volume-high text-cyan-400';
+                    soundText.textContent = 'AUDIO ON';
+                    soundText.className = 'text-cyan-400 font-bold';
+                    if (state.isRunning && synth) {
+                        synth.triggerAttack(110);
+                    }
+                } else {
+                    soundIcon.className = 'fa-solid fa-volume-xmark text-slate-400';
+                    soundText.textContent = 'AUDIO OFF';
+                    soundText.className = 'text-slate-300';
+                    if (synth) synth.triggerRelease();
+                    if (noise) noise.stop();
+                }
+            });
+
+            document.getElementById('pitchFollowerToggle').addEventListener('change', (e) => {
+                state.pitchFollower = e.target.checked;
+            });
+
+            document.getElementById('whiteNoiseToggle').addEventListener('change', (e) => {
+                state.ambientNoise = e.target.checked;
+                if (state.audioEnabled && audioInitialized && noise) {
+                    if (state.ambientNoise && state.isRunning) noise.start();
+                    else noise.stop();
+                }
+            });
+
+            // Affirmation Rotator
+            document.getElementById('nextAffirmationBtn').addEventListener('click', () => {
+                currentAffirmationIdx = (currentAffirmationIdx + 1) % affirmations.length;
+                const affEl = document.getElementById('affirmationText');
+                affEl.style.opacity = '0';
+                setTimeout(() => {
+                    affEl.textContent = `"${affirmations[currentAffirmationIdx]}"`;
+                    affEl.style.opacity = '1';
+                }, 150);
+            });
+        }
+
+        window.onload = function() {
+            resizeCanvases();
+            updateDurationsFromPreset();
+            setupEventListeners();
+            updateUIReadouts();
+            
+            // Kickstart animation frame loop
+            requestAnimationFrame(mainLoop);
+        };
+    </script>
+</body>
+</html>
