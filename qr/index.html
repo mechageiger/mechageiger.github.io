@@ -1,1 +1,897 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QR Craft - Quick & Custom QR Code Generator</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- QRCode.js Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#f0f7ff',
+              100: '#e0effe',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Custom scrollbar styling */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.05);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(156, 163, 175, 0.5);
+      border-radius: 9999px;
+    }
+    .glass-card {
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(12px);
+    }
+    .dark .glass-card {
+      background: rgba(17, 24, 39, 0.85);
+      backdrop-filter: blur(12px);
+    }
+    #qrcode-box img, #qrcode-box canvas {
+      margin: 0 auto;
+      border-radius: 0.5rem;
+      max-width: 100%;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-screen flex flex-col font-sans transition-colors duration-200">
 
+  <!-- Header / Navigation -->
+  <header class="sticky top-0 z-40 w-full border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
+          <i class="fa-solid fa-qrcode text-xl"></i>
+        </div>
+        <div>
+          <h1 class="font-bold text-lg leading-tight tracking-tight">QR Craft</h1>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Instant QR Code Studio</p>
+        </div>
+      </div>
+
+      <div class="flex items-center space-x-2">
+        <button id="theme-toggle-btn" class="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+          <i id="theme-icon" class="fa-solid fa-moon"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Application Area -->
+  <main class="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      
+      <!-- LEFT COLUMN: Controls & Input (7 cols) -->
+      <div class="lg:col-span-7 space-y-6">
+        
+        <!-- Input Panel -->
+        <section class="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-slate-200/80 dark:border-slate-700/80">
+          <div class="flex items-center justify-between mb-4">
+            <label for="url-input" class="block font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+              <i class="fa-solid fa-link text-blue-500"></i> Enter Destination URL
+            </label>
+            <span id="url-status" class="text-xs px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300 font-medium">Ready</span>
+          </div>
+
+          <div class="relative">
+            <input 
+              type="text" 
+              id="url-input" 
+              placeholder="https://example.com" 
+              value="https://github.com"
+              class="w-full pl-4 pr-24 py-3.5 bg-slate-50 dark:bg-slate-900/60 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-sm font-mono text-slate-800 dark:text-slate-200"
+            />
+            <div class="absolute right-2 top-2 flex items-center space-x-1">
+              <button id="paste-btn" title="Paste clipboard" class="px-2.5 py-1.5 text-xs rounded-lg bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-medium transition flex items-center gap-1">
+                <i class="fa-regular fa-clipboard"></i> Paste
+              </button>
+              <button id="clear-btn" title="Clear input" class="p-1.5 text-xs rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition">
+                <i class="fa-solid fa-xmark text-sm"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Quick Presets / Categories -->
+          <div class="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700/50">
+            <span class="text-xs font-medium text-slate-400 dark:text-slate-400 block mb-2">Quick Content Starters:</span>
+            <div class="flex flex-wrap gap-2">
+              <button class="quick-chip text-xs px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-700/60 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-slate-700 transition" data-value="https://www.capecodchamber.org">
+                <i class="fa-solid fa-water text-cyan-600 mr-1"></i> Cape Cod
+              </button>
+              <button class="quick-chip text-xs px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-700/60 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-slate-700 transition" data-value="https://google.com">
+                <i class="fa-brands fa-google text-slate-400 mr-1"></i> Google
+              </button>
+              <button class="quick-chip text-xs px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-700/60 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-slate-700 transition" data-value="https://youtube.com">
+                <i class="fa-brands fa-youtube text-red-500 mr-1"></i> YouTube
+              </button>
+              <button class="quick-chip text-xs px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-700/60 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-slate-700 transition" data-value="WIFI:S:MyHomeWiFi;T:WPA;P:SecretPassword123;;">
+                <i class="fa-solid fa-wifi text-emerald-500 mr-1"></i> WiFi Format
+              </button>
+              <button class="quick-chip text-xs px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-700/60 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-slate-700 transition" data-value="mailto:contact@example.com">
+                <i class="fa-regular fa-envelope text-purple-500 mr-1"></i> Email
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Customization Settings -->
+        <section class="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-slate-200/80 dark:border-slate-700/80 space-y-6">
+          <h2 class="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+            <i class="fa-solid fa-palette text-indigo-500"></i> Appearance & Styling
+          </h2>
+
+          <!-- Color Themes Presets -->
+          <div>
+            <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-2">Preset Themes</label>
+            <div class="grid grid-cols-2 sm:grid-cols-5 gap-2">
+              <button class="theme-preset p-2 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-blue-500 flex items-center space-x-2 text-left transition" data-fg="#0a2540" data-bg="#e0f2fe">
+                <div class="w-5 h-5 rounded-full border border-slate-300 flex overflow-hidden">
+                  <div class="w-1/2 bg-[#0a2540]"></div>
+                  <div class="w-1/2 bg-[#e0f2fe]"></div>
+                </div>
+                <span class="text-xs font-medium">Cape Cod</span>
+              </button>
+
+              <button class="theme-preset p-2 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-blue-500 flex items-center space-x-2 text-left transition" data-fg="#000000" data-bg="#ffffff">
+                <div class="w-5 h-5 rounded-full border border-slate-300 flex overflow-hidden">
+                  <div class="w-1/2 bg-black"></div>
+                  <div class="w-1/2 bg-white"></div>
+                </div>
+                <span class="text-xs font-medium">Classic</span>
+              </button>
+
+              <button class="theme-preset p-2 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-blue-500 flex items-center space-x-2 text-left transition" data-fg="#1e40af" data-bg="#eff6ff">
+                <div class="w-5 h-5 rounded-full border border-slate-300 flex overflow-hidden">
+                  <div class="w-1/2 bg-blue-800"></div>
+                  <div class="w-1/2 bg-blue-50"></div>
+                </div>
+                <span class="text-xs font-medium">Ocean Blue</span>
+              </button>
+
+              <button class="theme-preset p-2 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-blue-500 flex items-center space-x-2 text-left transition" data-fg="#065f46" data-bg="#ecfdf5">
+                <div class="w-5 h-5 rounded-full border border-slate-300 flex overflow-hidden">
+                  <div class="w-1/2 bg-emerald-800"></div>
+                  <div class="w-1/2 bg-emerald-50"></div>
+                </div>
+                <span class="text-xs font-medium">Emerald</span>
+              </button>
+
+              <button class="theme-preset p-2 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-blue-500 flex items-center space-x-2 text-left transition" data-fg="#581c87" data-bg="#faf5ff">
+                <div class="w-5 h-5 rounded-full border border-slate-300 flex overflow-hidden">
+                  <div class="w-1/2 bg-purple-900"></div>
+                  <div class="w-1/2 bg-purple-50"></div>
+                </div>
+                <span class="text-xs font-medium">Neon Violet</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Color Pickers -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label for="fg-color" class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Foreground Color</label>
+              <div class="flex items-center space-x-2">
+                <input type="color" id="fg-color" value="#000000" class="w-10 h-10 rounded-xl cursor-pointer border border-slate-300 dark:border-slate-600 p-0.5 bg-transparent">
+                <input type="text" id="fg-color-hex" value="#000000" class="flex-1 px-3 py-2 text-xs font-mono rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 uppercase">
+              </div>
+            </div>
+
+            <div>
+              <label for="bg-color" class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Background Color</label>
+              <div class="flex items-center space-x-2">
+                <input type="color" id="bg-color" value="#ffffff" class="w-10 h-10 rounded-xl cursor-pointer border border-slate-300 dark:border-slate-600 p-0.5 bg-transparent">
+                <input type="text" id="bg-color-hex" value="#ffffff" class="flex-1 px-3 py-2 text-xs font-mono rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 uppercase">
+              </div>
+            </div>
+          </div>
+
+          <!-- Dimension & Error Correction Options -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+            <div>
+              <div class="flex justify-between items-center mb-1">
+                <label for="size-slider" class="text-xs font-medium text-slate-500 dark:text-slate-400">Resolution / Size</label>
+                <span id="size-val" class="text-xs font-mono text-slate-600 dark:text-slate-300">256 x 256 px</span>
+              </div>
+              <input type="range" id="size-slider" min="128" max="512" step="32" value="256" class="w-full accent-blue-600 cursor-pointer">
+            </div>
+
+            <div>
+              <label for="ecc-select" class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Error Correction Level</label>
+              <select id="ecc-select" class="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="L">Low (~7% recovery)</option>
+                <option value="M">Medium (~15% recovery)</option>
+                <option value="Q">Quartile (~25% recovery)</option>
+                <option value="H" selected>High (~30% recovery - Recommended for Logos)</option>
+              </select>
+            </div>
+          </div>
+        </section>
+
+        <!-- Center Logo Overlay Settings -->
+        <section class="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-slate-200/80 dark:border-slate-700/80 space-y-4">
+          <div class="flex items-center justify-between">
+            <h2 class="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+              <i class="fa-solid fa-image text-indigo-500"></i> Center Logo Overlay
+            </h2>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" id="logo-toggle" class="sr-only peer">
+              <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-blue-600"></div>
+            </label>
+          </div>
+
+          <div id="logo-options" class="space-y-4 hidden pt-2 border-t border-slate-100 dark:border-slate-700/50">
+            <!-- Preset Logos & Upload -->
+            <div>
+              <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-2">Select Icon or Upload Custom Logo</label>
+              <div class="grid grid-cols-6 gap-2 mb-2">
+                <button class="logo-preset p-2.5 rounded-xl border-2 border-blue-500 bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center transition" data-preset="whale" title="Cape Cod Whale">
+                  <i class="fa-solid fa-water text-cyan-600 dark:text-cyan-400 text-lg"></i>
+                </button>
+                <button class="logo-preset p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-blue-500 flex items-center justify-center transition" data-preset="globe" title="Globe">
+                  <i class="fa-solid fa-globe text-blue-600 dark:text-blue-400 text-lg"></i>
+                </button>
+                <button class="logo-preset p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-blue-500 flex items-center justify-center transition" data-preset="github" title="GitHub">
+                  <i class="fa-brands fa-github text-slate-800 dark:text-slate-200 text-lg"></i>
+                </button>
+                <button class="logo-preset p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-blue-500 flex items-center justify-center transition" data-preset="heart" title="Heart">
+                  <i class="fa-solid fa-heart text-red-500 text-lg"></i>
+                </button>
+                <button class="logo-preset p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-blue-500 flex items-center justify-center transition" data-preset="star" title="Star">
+                  <i class="fa-solid fa-star text-amber-500 text-lg"></i>
+                </button>
+                <label for="logo-upload" class="p-2.5 rounded-xl border border-dashed border-slate-300 dark:border-slate-600 hover:border-blue-500 flex items-center justify-center cursor-pointer transition text-slate-500 dark:text-slate-400" title="Upload Image File">
+                  <i class="fa-solid fa-cloud-arrow-up text-lg"></i>
+                  <input type="file" id="logo-upload" accept="image/*" class="hidden">
+                </label>
+              </div>
+              <p id="custom-logo-name" class="text-[11px] text-slate-400 italic truncate hidden"></p>
+            </div>
+
+            <!-- Logo Size & Shield Style -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <div class="flex justify-between items-center mb-1">
+                  <label for="logo-size-slider" class="text-xs font-medium text-slate-500 dark:text-slate-400">Logo Scale</label>
+                  <span id="logo-size-val" class="text-xs font-mono text-slate-600 dark:text-slate-300">20%</span>
+                </div>
+                <input type="range" id="logo-size-slider" min="10" max="26" step="2" value="20" class="w-full accent-blue-600 cursor-pointer">
+              </div>
+
+              <div>
+                <label for="logo-shape-select" class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Backing Badge</label>
+                <select id="logo-shape-select" class="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500">
+                  <option value="circle" selected>Circle Shield</option>
+                  <option value="rounded">Rounded Square</option>
+                  <option value="square">Square Shield</option>
+                  <option value="none">Transparent (No Backdrop)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </div>
+
+      <!-- RIGHT COLUMN: Preview & Download Card (5 cols) -->
+      <div class="lg:col-span-5 space-y-6">
+        
+        <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-md border border-slate-200/80 dark:border-slate-700/80 text-center flex flex-col items-center justify-between min-h-[460px]">
+          <div class="w-full">
+            <div class="flex items-center justify-between mb-4 w-full">
+              <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Live Preview</span>
+              <span id="format-badge" class="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400">
+                PNG Ready
+              </span>
+            </div>
+
+            <!-- QR Code Render Box -->
+            <div id="qr-wrapper" class="relative group my-4 p-6 rounded-2xl bg-slate-100 dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 flex items-center justify-center min-h-[280px] shadow-inner transition duration-300">
+              <div id="qrcode-box" class="flex items-center justify-center p-2 bg-white rounded-xl shadow-sm transition-transform duration-200 transform group-hover:scale-[1.02]">
+                <!-- QR Code standard output renders here -->
+              </div>
+            </div>
+
+            <!-- Truncated target display -->
+            <p id="preview-url-text" class="text-xs font-mono text-slate-500 dark:text-slate-400 truncate max-w-xs mx-auto mb-6 px-2">
+              https://github.com
+            </p>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="w-full space-y-2.5">
+            <button id="download-btn" class="w-full py-3 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium text-sm rounded-xl shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2 transition transform active:scale-[0.98]">
+              <i class="fa-solid fa-download"></i> Download QR Code
+            </button>
+
+            <div class="grid grid-cols-2 gap-2">
+              <button id="copy-img-btn" class="py-2.5 px-3 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-xs font-medium rounded-xl flex items-center justify-center gap-2 transition">
+                <i class="fa-regular fa-copy"></i> Copy Image
+              </button>
+              <button id="share-btn" class="py-2.5 px-3 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-xs font-medium rounded-xl flex items-center justify-center gap-2 transition">
+                <i class="fa-solid fa-share-nodes"></i> Share Link
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- History / Recent Generated Codes -->
+        <div class="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-slate-200/80 dark:border-slate-700/80">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+              <i class="fa-solid fa-history"></i> Recent QR Codes
+            </h3>
+            <button id="clear-history-btn" class="text-[11px] text-slate-400 hover:text-red-500 transition">Clear</button>
+          </div>
+          
+          <div id="history-list" class="space-y-2 max-h-40 overflow-y-auto pr-1">
+            <p id="no-history-text" class="text-xs text-slate-400 text-center py-3 italic">No recent codes saved yet</p>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <script>
+    // Application State
+    const presetLogos = {
+      whale: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><path d="M28 4c0-1.1.9-2 2-2s2 .9 2 2v6c0 1.1-.9 2-2 2s-2-.9-2-2V4zm-8 4c0-1.1.9-2 2-2s2 .9 2 2v5c0 1.1-.9 2-2 2s-2-.9-2-2V8zm16 0c0-1.1.9-2 2-2s2 .9 2 2v5c0 1.1-.9 2-2 2s-2-.9-2-2V8z" fill="%2338bdf8"/><path d="M58.5 32.5c-2.8-5.8-8.2-10-14.8-11.4-2.8-.6-5.7-.6-8.5 0-7.2 1.4-13.2 6.3-16 13-1.5 2.8-3.8 3.9-6.8 3.9-2 0-3.8-1.2-4.5-3-.3-.8-.9-1.5-1.8-1.7s-1.8.2-2.3.9c-1.4 2.1-1.3 4.9.2 6.8 1.8 2.3 4.6 3.6 7.5 3.6 4.2 0 7.9-2.1 10.3-5.3 3.5 2.8 8 4.4 12.7 4.4 7.2 0 13.9-3.7 17.8-9.7 3.2 1.8 6.9 2.7 10.7 2.7 1.2 0 2.2-.9 2.2-2.1 0-1-.7-1.9-1.7-2.1zM18 28c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2z" fill="%230a2540"/></svg>',
+      globe: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%232563eb"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>',
+      github: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%2318181b"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>',
+      heart: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23ef4444"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>',
+      star: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23f59e0b"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>'
+    };
+
+    const state = {
+      url: 'https://www.capecodchamber.org',
+      fgColor: '#0a2540',
+      bgColor: '#e0f2fe',
+      size: 256,
+      eccLevel: 'H',
+      history: [],
+      logoEnabled: true,
+      logoSrc: presetLogos.whale,
+      logoSize: 22,
+      logoShape: 'circle'
+    };
+
+    let qrInstance = null;
+
+    // DOM Elements
+    const urlInput = document.getElementById('url-input');
+    const urlStatus = document.getElementById('url-status');
+    const pasteBtn = document.getElementById('paste-btn');
+    const clearBtn = document.getElementById('clear-btn');
+    const fgColorInput = document.getElementById('fg-color');
+    const fgColorHex = document.getElementById('fg-color-hex');
+    const bgColorInput = document.getElementById('bg-color');
+    const bgColorHex = document.getElementById('bg-color-hex');
+    const sizeSlider = document.getElementById('size-slider');
+    const sizeVal = document.getElementById('size-val');
+    const eccSelect = document.getElementById('ecc-select');
+    const qrcodeBox = document.getElementById('qrcode-box');
+    const previewUrlText = document.getElementById('preview-url-text');
+    const downloadBtn = document.getElementById('download-btn');
+    const copyImgBtn = document.getElementById('copy-img-btn');
+    const shareBtn = document.getElementById('share-btn');
+    const historyList = document.getElementById('history-list');
+    const clearHistoryBtn = document.getElementById('clear-history-btn');
+    const themeToggleBtn = document.getElementById('theme-toggle-btn');
+    const themeIcon = document.getElementById('theme-icon');
+
+    // Logo DOM Elements
+    const logoToggle = document.getElementById('logo-toggle');
+    const logoOptions = document.getElementById('logo-options');
+    const logoUpload = document.getElementById('logo-upload');
+    const logoSizeSlider = document.getElementById('logo-size-slider');
+    const logoSizeVal = document.getElementById('logo-size-val');
+    const logoShapeSelect = document.getElementById('logo-shape-select');
+    const customLogoName = document.getElementById('custom-logo-name');
+
+    // Helper: Toast Notification
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      toast.className = `pointer-events-auto px-4 py-3 rounded-xl shadow-lg text-xs font-medium flex items-center space-x-2 transition-all duration-300 transform translate-y-2 opacity-0 ${
+        type === 'success' 
+          ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900' 
+          : 'bg-red-600 text-white'
+      }`;
+      
+      const icon = type === 'success' ? '<i class="fa-solid fa-check-circle text-emerald-400 dark:text-emerald-600"></i>' : '<i class="fa-solid fa-triangle-exclamation"></i>';
+      toast.innerHTML = `${icon} <span>${message}</span>`;
+
+      container.appendChild(toast);
+
+      // Trigger animation
+      setTimeout(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      }, 10);
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
+
+    // URL Validator
+    function validateInput(val) {
+      if (!val.trim()) {
+        urlStatus.textContent = 'Empty';
+        urlStatus.className = 'text-xs px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 font-medium';
+        return false;
+      }
+
+      try {
+        if (val.startsWith('http://') || val.startsWith('https://')) {
+          new URL(val);
+        }
+        urlStatus.textContent = 'Valid';
+        urlStatus.className = 'text-xs px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 font-medium';
+        return true;
+      } catch (e) {
+        urlStatus.textContent = 'Custom Content';
+        urlStatus.className = 'text-xs px-2.5 py-1 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400 font-medium';
+        return true;
+      }
+    }
+
+    // Core QR Generation Function
+    function renderQRCode() {
+      let text = urlInput.value.trim() || 'https://github.com';
+
+      // Automatically prepend https:// if no protocol or special scheme is provided
+      const lower = text.toLowerCase();
+      const hasProtocol = lower.startsWith('http://') || lower.startsWith('https://');
+      const isSpecialScheme = lower.startsWith('mailto:') || lower.startsWith('wifi:') || lower.startsWith('tel:') || lower.startsWith('sms:');
+
+      if (!hasProtocol && !isSpecialScheme) {
+        text = 'https://' + text;
+      }
+
+      state.url = text;
+      previewUrlText.textContent = text;
+      validateInput(text);
+
+      // Clear container
+      qrcodeBox.innerHTML = '';
+
+      // Correction Level Mapping
+      const eccMap = {
+        'L': QRCode.CorrectLevel.L,
+        'M': QRCode.CorrectLevel.M,
+        'Q': QRCode.CorrectLevel.Q,
+        'H': QRCode.CorrectLevel.H
+      };
+
+      try {
+        qrInstance = new QRCode(qrcodeBox, {
+          text: text,
+          width: parseInt(state.size),
+          height: parseInt(state.size),
+          colorDark: state.fgColor,
+          colorLight: state.bgColor,
+          correctLevel: eccMap[state.eccLevel] || QRCode.CorrectLevel.H
+        });
+
+        // Apply Logo Overlay if enabled
+        if (state.logoEnabled && state.logoSrc) {
+          setTimeout(applyLogoToCanvas, 50);
+        }
+      } catch (err) {
+        console.error('Failed to generate QR Code', err);
+      }
+    }
+
+    function applyLogoToCanvas() {
+      const canvas = qrcodeBox.querySelector('canvas');
+      if (!canvas || !state.logoEnabled || !state.logoSrc) return;
+
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+
+      img.onload = () => {
+        const size = canvas.width;
+        const logoScale = state.logoSize / 100;
+        const logoW = size * logoScale;
+        const logoH = size * logoScale;
+        const x = (size - logoW) / 2;
+        const y = (size - logoH) / 2;
+
+        // Draw background backing shield behind logo for scanning contrast
+        if (state.logoShape !== 'none') {
+          const padding = logoW * 0.22;
+          const bgX = x - padding / 2;
+          const bgY = y - padding / 2;
+          const bgW = logoW + padding;
+          const bgH = logoH + padding;
+
+          ctx.fillStyle = state.bgColor || '#ffffff';
+
+          if (state.logoShape === 'circle') {
+            ctx.beginPath();
+            ctx.arc(size / 2, size / 2, bgW / 2, 0, Math.PI * 2);
+            ctx.fill();
+          } else if (state.logoShape === 'rounded') {
+            ctx.beginPath();
+            if (ctx.roundRect) {
+              ctx.roundRect(bgX, bgY, bgW, bgH, 8);
+            } else {
+              ctx.rect(bgX, bgY, bgW, bgH);
+            }
+            ctx.fill();
+          } else if (state.logoShape === 'square') {
+            ctx.fillRect(bgX, bgY, bgW, bgH);
+          }
+        }
+
+        // Draw logo image
+        ctx.drawImage(img, x, y, logoW, logoH);
+
+        // Sync standard img element generated by qrcode.js
+        const imgElem = qrcodeBox.querySelector('img');
+        if (imgElem) {
+          imgElem.src = canvas.toDataURL('image/png');
+        }
+      };
+
+      img.src = state.logoSrc;
+    }
+
+    // Helper to get Canvas or Image element from rendered box
+    function getQRCanvasOrImg() {
+      const canvas = qrcodeBox.querySelector('canvas');
+      if (canvas) return canvas;
+      const img = qrcodeBox.querySelector('img');
+      if (img) return img;
+      return null;
+    }
+
+    // Action: Download PNG
+    function downloadQR() {
+      const elem = getQRCanvasOrImg();
+      if (!elem) {
+        showToast('No QR code ready to download', 'error');
+        return;
+      }
+
+      let dataUrl = '';
+      if (elem.tagName === 'CANVAS') {
+        dataUrl = elem.toDataURL('image/png');
+      } else if (elem.tagName === 'IMG') {
+        dataUrl = elem.src;
+      }
+
+      if (dataUrl) {
+        const link = document.createElement('a');
+        link.download = `qrcode-${Date.now()}.png`;
+        link.href = dataUrl;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        addToHistory(state.url);
+        showToast('QR Code downloaded successfully!');
+      } else {
+        showToast('Could not process image download', 'error');
+      }
+    }
+
+    // Action: Copy QR Image to Clipboard
+    async function copyQRToClipboard() {
+      const elem = getQRCanvasOrImg();
+      if (!elem) return;
+
+      try {
+        let blob = null;
+        if (elem.tagName === 'CANVAS') {
+          blob = await new Promise(resolve => elem.toBlob(resolve, 'image/png'));
+        } else if (elem.tagName === 'IMG') {
+          const resp = await fetch(elem.src);
+          blob = await resp.blob();
+        }
+
+        if (blob && navigator.clipboard && window.ClipboardItem) {
+          await navigator.clipboard.write([
+            new ClipboardItem({ 'image/png': blob })
+          ]);
+          showToast('QR Code image copied to clipboard!');
+        } else {
+          showToast('Clipboard image copying is not supported in this browser', 'error');
+        }
+      } catch (e) {
+        console.error(e);
+        showToast('Unable to copy image to clipboard', 'error');
+      }
+    }
+
+    // Action: Share/Copy Link
+    function shareLink() {
+      if (!state.url) return;
+      
+      // Legacy fallback copy mechanism
+      const dummy = document.createElement('textarea');
+      document.body.appendChild(dummy);
+      dummy.value = state.url;
+      dummy.select();
+      document.execCommand('copy');
+      document.body.removeChild(dummy);
+
+      showToast('Destination link copied to clipboard!');
+    }
+
+    // Recent Items Management
+    function addToHistory(url) {
+      if (!url) return;
+      // Prevent immediate duplicates
+      state.history = state.history.filter(item => item !== url);
+      state.history.unshift(url);
+      if (state.history.length > 5) state.history.pop();
+      
+      updateHistoryUI();
+    }
+
+    function updateHistoryUI() {
+      historyList.innerHTML = '';
+      if (state.history.length === 0) {
+        historyList.innerHTML = '<p id="no-history-text" class="text-xs text-slate-400 text-center py-3 italic">No recent codes saved yet</p>';
+        return;
+      }
+
+      state.history.forEach(item => {
+        const row = document.createElement('div');
+        row.className = 'flex items-center justify-between p-2 rounded-lg bg-slate-50 dark:bg-slate-700/40 hover:bg-slate-100 dark:hover:bg-slate-700 text-xs transition group cursor-pointer';
+        
+        row.innerHTML = `
+          <span class="truncate max-w-[180px] font-mono text-slate-700 dark:text-slate-300">${item}</span>
+          <button class="use-history-btn text-blue-500 hover:text-blue-600 font-medium opacity-80 group-hover:opacity-100 transition">
+            Load
+          </button>
+        `;
+
+        row.querySelector('.use-history-btn').addEventListener('click', (e) => {
+          e.stopPropagation();
+          urlInput.value = item;
+          renderQRCode();
+          showToast('Loaded URL from history');
+        });
+
+        historyList.appendChild(row);
+      });
+    }
+
+    // Dark Mode Toggle Logic
+    function initTheme() {
+      const isDark = localStorage.getItem('theme') === 'dark' || 
+        (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      
+      if (isDark) {
+        document.documentElement.classList.add('dark');
+        themeIcon.className = 'fa-solid fa-sun';
+      } else {
+        document.documentElement.classList.remove('dark');
+        themeIcon.className = 'fa-solid fa-moon';
+      }
+    }
+
+    themeToggleBtn.addEventListener('click', () => {
+      if (document.documentElement.classList.contains('dark')) {
+        document.documentElement.classList.remove('dark');
+        localStorage.setItem('theme', 'light');
+        themeIcon.className = 'fa-solid fa-moon';
+      } else {
+        document.documentElement.classList.add('dark');
+        localStorage.setItem('theme', 'dark');
+        themeIcon.className = 'fa-solid fa-sun';
+      }
+    });
+
+    // Event Listeners
+    urlInput.addEventListener('input', () => {
+      renderQRCode();
+    });
+
+    urlInput.addEventListener('blur', () => {
+      if (urlInput.value.trim() && state.url) {
+        urlInput.value = state.url;
+      }
+    });
+
+    // Logo Overlay Controls
+    logoToggle.addEventListener('change', (e) => {
+      state.logoEnabled = e.target.checked;
+      if (state.logoEnabled) {
+        logoOptions.classList.remove('hidden');
+      } else {
+        logoOptions.classList.add('hidden');
+      }
+      renderQRCode();
+    });
+
+    document.querySelectorAll('.logo-preset').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.logo-preset').forEach(b => {
+          b.classList.remove('border-2', 'border-blue-500', 'bg-blue-50', 'dark:bg-blue-900/30');
+          b.classList.add('border-slate-200', 'dark:border-slate-700');
+        });
+        btn.classList.remove('border-slate-200', 'dark:border-slate-700');
+        btn.classList.add('border-2', 'border-blue-500', 'bg-blue-50', 'dark:bg-blue-900/30');
+
+        const presetKey = btn.getAttribute('data-preset');
+        if (presetLogos[presetKey]) {
+          state.logoSrc = presetLogos[presetKey];
+          customLogoName.classList.add('hidden');
+          renderQRCode();
+        }
+      });
+    });
+
+    logoUpload.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          state.logoSrc = event.target.result;
+          customLogoName.textContent = `Custom: ${file.name}`;
+          customLogoName.classList.remove('hidden');
+
+          document.querySelectorAll('.logo-preset').forEach(b => {
+            b.classList.remove('border-2', 'border-blue-500', 'bg-blue-50', 'dark:bg-blue-900/30');
+            b.classList.add('border-slate-200', 'dark:border-slate-700');
+          });
+
+          renderQRCode();
+          showToast('Custom logo uploaded successfully');
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    logoSizeSlider.addEventListener('input', (e) => {
+      state.logoSize = e.target.value;
+      logoSizeVal.textContent = `${state.logoSize}%`;
+      renderQRCode();
+    });
+
+    logoShapeSelect.addEventListener('change', (e) => {
+      state.logoShape = e.target.value;
+      renderQRCode();
+    });
+
+    pasteBtn.addEventListener('click', async () => {
+      try {
+        if (navigator.clipboard && navigator.clipboard.readText) {
+          const text = await navigator.clipboard.readText();
+          if (text) {
+            urlInput.value = text;
+            renderQRCode();
+            showToast('Pasted content from clipboard');
+          }
+        } else {
+          showToast('Clipboard access denied or unavailable', 'error');
+        }
+      } catch (err) {
+        showToast('Please paste manually using Ctrl+V or Cmd+V', 'error');
+      }
+    });
+
+    clearBtn.addEventListener('click', () => {
+      urlInput.value = '';
+      renderQRCode();
+      urlInput.focus();
+    });
+
+    // Color Inputs
+    fgColorInput.addEventListener('input', (e) => {
+      state.fgColor = e.target.value;
+      fgColorHex.value = e.target.value.toUpperCase();
+      renderQRCode();
+    });
+
+    bgColorInput.addEventListener('input', (e) => {
+      state.bgColor = e.target.value;
+      bgColorHex.value = e.target.value.toUpperCase();
+      renderQRCode();
+    });
+
+    // Theme Presets
+    document.querySelectorAll('.theme-preset').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const fg = btn.getAttribute('data-fg');
+        const bg = btn.getAttribute('data-bg');
+        
+        state.fgColor = fg;
+        state.bgColor = bg;
+        
+        fgColorInput.value = fg;
+        fgColorHex.value = fg.toUpperCase();
+        bgColorInput.value = bg;
+        bgColorHex.value = bg.toUpperCase();
+        
+        renderQRCode();
+      });
+    });
+
+    // Quick Chips
+    document.querySelectorAll('.quick-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        urlInput.value = chip.getAttribute('data-value');
+        renderQRCode();
+        showToast('Applied sample content');
+      });
+    });
+
+    // Size Slider
+    sizeSlider.addEventListener('input', (e) => {
+      state.size = e.target.value;
+      sizeVal.textContent = `${state.size} x ${state.size} px`;
+      renderQRCode();
+    });
+
+    // ECC Selector
+    eccSelect.addEventListener('change', (e) => {
+      state.eccLevel = e.target.value;
+      renderQRCode();
+    });
+
+    // Action Handlers
+    downloadBtn.addEventListener('click', downloadQR);
+    copyImgBtn.addEventListener('click', copyQRToClipboard);
+    shareBtn.addEventListener('click', shareLink);
+
+    clearHistoryBtn.addEventListener('click', () => {
+      state.history = [];
+      updateHistoryUI();
+      showToast('History cleared');
+    });
+
+    // Window Load Initialization
+    window.onload = function() {
+      initTheme();
+      fgColorInput.value = state.fgColor;
+      fgColorHex.value = state.fgColor.toUpperCase();
+      bgColorInput.value = state.bgColor;
+      bgColorHex.value = state.bgColor.toUpperCase();
+      urlInput.value = state.url;
+      logoToggle.checked = state.logoEnabled;
+      if (state.logoEnabled) {
+        logoOptions.classList.remove('hidden');
+      }
+      renderQRCode();
+    };
+  </script>
+</body>
+</html>
